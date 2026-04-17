@@ -11,16 +11,12 @@ async function makeRequest(method, url, data, headers) {
   const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
   if (proxy) {
     config.httpsAgent = new HttpsProxyAgent(proxy);
-    config.proxy = false; // let the agent handle proxying
+    config.proxy = false;
   }
   const response = await axios(config);
   return response.data;
 }
 
-/**
- * loginHandler — mounted on POST /keycloak/auth by manifest.js
- * Authenticates with Keycloak and stores the access token for downstream use.
- */
 const loginHandler = async (req, res) => {
   try {
     const { grant_type, client_id, client_secret, username, password } = req.body;
@@ -58,27 +54,13 @@ const loginHandler = async (req, res) => {
   }
 };
 
-/**
- * Express-Gateway policy — injects the stored Keycloak token into every
- * proxied request as an Authorization header, so downstream microservices
- * can use it directly for Disco API calls.
- */
-module.exports = {
-  name: 'keycloak-auth-policy',
-  loginHandler,
-  policy: (actionParams) => {
-    return (req, res, next) => {
-      if (authToken) {
-        req.headers['authorization'] = `Bearer ${authToken}`;
-      } else {
-        console.warn('keycloak-auth-policy: no token available — call POST /keycloak/auth first');
-      }
-      next();
-    };
-  },
-  schema: {
-    $id: 'keycloak-auth-policy',
-    type: 'object',
-    properties: {}
+const middleware = (req, res, next) => {
+  if (authToken) {
+    req.headers['authorization'] = `Bearer ${authToken}`;
+  } else {
+    console.warn('keycloak-auth: no token available — call POST /keycloak/auth first');
   }
+  next();
 };
+
+module.exports = { loginHandler, middleware };
