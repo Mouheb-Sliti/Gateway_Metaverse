@@ -1,0 +1,139 @@
+http:
+  port: ${HTTP_PORT}
+apiEndpoints:
+  auth:
+    paths: '/auth*'
+  catalog:
+    paths: '/catalog*'
+  orangeOffers:
+    paths: '/orange/offers*'
+  discoverPartners:
+    paths: '/discover/partners*'
+  partners:
+    paths: '/partners/*'
+  unity:
+    paths: '/unity/*'
+  metaverse:
+    paths: '/metaverse/*'
+  api:
+    paths: '/*'
+serviceEndpoints:
+  authService:
+    url: '${AUTH_SERVICE_URL}'
+  catalogService:
+    url: '${CATALOG_SERVICE_URL}'
+  partnersService:
+    url: '${PARTNERS_SERVICE_URL}'
+  metaverseService:
+    url: '${METAVERSE_SERVICE_URL}'
+policies:
+  - proxy
+  - rate-limit
+  - catalog-policy
+  - keycloak-auth-policy
+pipelines:
+  authPipeline:
+    apiEndpoints:
+      - auth
+    policies:
+      - rate-limit:
+          - action:
+              max: 100
+              windowMs: 60000
+      - proxy:
+          - action:
+              serviceEndpoint: authService
+              changeOrigin: true
+  catalogPipeline:
+    apiEndpoints:
+      - catalog
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - catalog-policy:
+          - action:
+              channel: 'metaverse'
+      - proxy:
+          - action:
+              serviceEndpoint: catalogService
+              changeOrigin: true
+              stripPath: true
+  orangeOffersPipeline:
+    apiEndpoints:
+      - orangeOffers
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - rate-limit:
+          - action:
+              max: 60
+              windowMs: 60000
+      - proxy:
+          - action:
+              serviceEndpoint: metaverseService
+              changeOrigin: true
+              prependPath: false
+              stripPath: true
+  discoverPartnersPipeline:
+    apiEndpoints:
+      - discoverPartners
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - proxy:
+          - action:
+              serviceEndpoint: metaverseService
+              changeOrigin: true
+              prependPath: false
+              stripPath: true
+  partnersPipeline:
+    apiEndpoints:
+      - partners
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - rate-limit:
+          - action:
+              max: 200
+              windowMs: 60000
+      - proxy:
+          - action:
+              serviceEndpoint: partnersService
+              changeOrigin: true
+              stripPath: true
+  unityPipeline:
+    apiEndpoints:
+      - unity
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - proxy:
+          - action:
+              serviceEndpoint: partnersService
+              changeOrigin: true
+  metaversePipeline:
+    apiEndpoints:
+      - metaverse
+    policies:
+      - keycloak-auth-policy:
+          - action: {}
+      - rate-limit:
+          - action:
+              max: 120
+              windowMs: 60000
+      - proxy:
+          - action:
+              serviceEndpoint: partnersService
+              changeOrigin: true
+              stripPath: true
+  default:
+    apiEndpoints:
+      - api
+    policies:
+      - proxy:
+          - action:
+              serviceEndpoint: authService
+              changeOrigin: true
+              prependPath:  true
+              ignorePath:   false
+              stripPath:    true

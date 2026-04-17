@@ -1,0 +1,7 @@
+include:
+  - project: 'disco/disco-ops/disco-pipelines'
+    ref: develop
+    file: 'disco-application/common-pipelines/node.yml'
+  - project: 'disco/disco-ops/disco-pipelines'
+    ref: develop
+    file: 'disco-application/extended-store-gateway.yml'
