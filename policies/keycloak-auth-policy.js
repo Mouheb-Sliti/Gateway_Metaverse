@@ -1,19 +1,12 @@
 const querystring = require('querystring');
 const axios = require('axios');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 
 // In-memory state — shared across all requests on this gateway instance
 let authToken = null;
 const userTokens = {};
 
 async function makeRequest(method, url, data, headers) {
-  const config = { method, url, data, headers };
-  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-  if (proxy) {
-    config.httpsAgent = new HttpsProxyAgent(proxy);
-    config.proxy = false;
-  }
-  const response = await axios(config);
+  const response = await axios({ method, url, data, headers });
   return response.data;
 }
 

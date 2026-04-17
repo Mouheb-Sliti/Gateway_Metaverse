@@ -44,5 +44,5 @@ app.use('/metaverse', keycloakAuth.middleware, metaverseLimiter,
 app.use(
   createProxyMiddleware({ target: process.env.AUTH_SERVICE_URL, changeOrigin: true }));
 
-const PORT = process.env.HTTP_PORT || 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Gateway running on port ${PORT}`));
