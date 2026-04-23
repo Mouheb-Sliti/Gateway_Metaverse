@@ -1,52 +1,77 @@
 const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { keycloakLogin, injectKeycloakToken } = require('./policies/keycloak-auth-policy');
+require('dotenv').config();
 
-const keycloakAuth = require('./policies/keycloak-auth-policy');
-const catalogLogger = require('./policies/catalog-policy');
+const app = express();
+const PORT = process.env.HTTP_PORT || 8080;
 
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-  }
+// ── Middleware ───────────────────────────────────────────
+app.use(helmet());
+app.use(cors());
+app.use(morgan('dev'));
 
-  const app = express();
-  app.use(express.json());
+// ── Health check ────────────────────────────────────────
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'metaverse-gateway' });
+});
 
-  // ── Rate limiters ─────────────────────────────────────────────────────────────
-  const authLimiter      = rateLimit({ windowMs: 60_000, limit: 100 });
-  const offersLimiter    = rateLimit({ windowMs: 60_000, limit: 60  });
-  const partnersLimiter  = rateLimit({ windowMs: 60_000, limit: 200 });
-  const metaverseLimiter = rateLimit({ windowMs: 60_000, limit: 120 });
+// ── Keycloak login endpoint ─────────────────────────────
+app.post('/keycloak/auth', express.urlencoded({ extended: true }), express.json(), keycloakLogin);
 
-  // ── Keycloak login ────────────────────────────────────────────────────────────
-  app.post('/keycloak/auth', keycloakAuth.loginHandler);
+// ── Rate limiters ───────────────────────────────────────
+const defaultLimiter = rateLimit({ windowMs: 60_000, max: 100 });
+const strictLimiter = rateLimit({ windowMs: 60_000, max: 60 });
+const highLimiter = rateLimit({ windowMs: 60_000, max: 200 });
+const metaverseLimiter = rateLimit({ windowMs: 60_000, max: 120 });
 
-  // ── Proxy routes (most specific first) ───────────────────────────────────────
-  app.use('/auth', authLimiter,
-    createProxyMiddleware({ target: process.env.AUTH_SERVICE_URL, changeOrigin: true }));
+// ── Service URLs ────────────────────────────────────────
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:4001';
+const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:4003';
+const PARTNERS_SERVICE_URL = process.env.PARTNERS_SERVICE_URL || 'http://localhost:4001';
+const METAVERSE_SERVICE_URL = process.env.METAVERSE_SERVICE_URL || 'http://localhost:4003';
 
-    app.use('/catalog', keycloakAuth.middleware, catalogLogger,
-      createProxyMiddleware({ target: process.env.CATALOG_SERVICE_URL, changeOrigin: true }));
+// ── Helper: create proxy ────────────────────────────────
+function proxy(target, pathRewrite) {
+  const opts = { target, changeOrigin: true };
+  if (pathRewrite) opts.pathRewrite = pathRewrite;
+  return createProxyMiddleware(opts);
+}
 
-      app.use('/orange/offers', keycloakAuth.middleware, offersLimiter,
-        createProxyMiddleware({ target: process.env.METAVERSE_SERVICE_URL, changeOrigin: true }));
+// ── Routes → Service proxies ────────────────────────────
 
-        app.use('/discover/partners', keycloakAuth.middleware,
-          createProxyMiddleware({ target: process.env.METAVERSE_SERVICE_URL, changeOrigin: true }));
+// Auth service (no keycloak token needed — partners auth themselves)
+app.use('/auth', defaultLimiter, proxy(AUTH_SERVICE_URL));
 
-          app.use('/partners', keycloakAuth.middleware, partnersLimiter,
-            createProxyMiddleware({ target: process.env.PARTNERS_SERVICE_URL, changeOrigin: true }));
+// Catalog service (keycloak-protected)
+app.use('/catalog', injectKeycloakToken, proxy(CATALOG_SERVICE_URL, { '^/': '/catalog/' }));
 
-            app.use('/unity', keycloakAuth.middleware,
-              createProxyMiddleware({ target: process.env.PARTNERS_SERVICE_URL, changeOrigin: true }));
+// Orange offers → metaverse-journey-service
+app.use('/orange/offers', injectKeycloakToken, strictLimiter, proxy(METAVERSE_SERVICE_URL, { '^/orange/offers': '/orange/offers' }));
 
-              app.use('/metaverse', keycloakAuth.middleware, metaverseLimiter,
-                createProxyMiddleware({ target: process.env.PARTNERS_SERVICE_URL, changeOrigin: true }));
+// Discover partners → metaverse-journey-service
+app.use('/discover/partners', injectKeycloakToken, proxy(METAVERSE_SERVICE_URL, { '^/discover/partners': '/discover/partners' }));
 
-                // ── Default catch-all ─────────────────────────────────────────────────────────
-                app.use(
-                  createProxyMiddleware({ target: process.env.AUTH_SERVICE_URL, changeOrigin: true }));
+// Partners service (keycloak-protected)
+app.use('/partners', injectKeycloakToken, highLimiter, proxy(PARTNERS_SERVICE_URL, { '^/partners': '' }));
 
-                  const PORT = process.env.PORT || 3000;
-                  app.listen(PORT, () => console.log(`Gateway running on port ${PORT}`));
-                  
+// Unity → partners service (keycloak-protected)
+app.use('/unity', injectKeycloakToken, proxy(PARTNERS_SERVICE_URL));
+
+// Metaverse → partners service (keycloak-protected)
+app.use('/metaverse', injectKeycloakToken, metaverseLimiter, proxy(PARTNERS_SERVICE_URL, { '^/metaverse': '' }));
+
+// ── 404 ─────────────────────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// ── Start ───────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`Gateway listening on port ${PORT}`);
+});
+

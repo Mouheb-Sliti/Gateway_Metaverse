@@ -8,4 +8,4 @@ example/keys/*.pem
 coverage
 .nyc_output
 coverage.lcov
-.env.env
+.env

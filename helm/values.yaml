@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: 2025 Orange SA
+# SPDX-License-Identifier: MIT
+#
+# This software is distributed under the MIT License,
+# the text of which is available at https://opensource.org/license/mit
+# or see the "LICENSE.txt" file for more details.
+#
+# Authors: See CONTRIBUTORS.txt
+
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+image: #modified during the packaging, overridden with values-*.yaml during the deployment
+  repository: "${docker_repository}"
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart version.
+  tag: "${docker_tag}"  
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+
+# remove curly braces and specify if necessary
+podAnnotations: {}
+
+# remove curly braces and specify if necessary
+podSecurityContext: {}
+
+# remove curly braces and specify if necessary
+securityContext: {}
+
+
+# set to true if you want to have CertManager issue a Certificate for your service
+# further config is needed, check odaca custom file for example
+certManager:
+  create: false
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+monitoring:
+  domain: "appli"
+  productName: ""
+  topology: "none"
+  role: "none"
+  app: ""
+  application: ""
+  environment: ""
+
+ingress: 
+  enabled: false
+registryCredentials:
+  create: false
+
+gateway:
+  service:
+    orchestrationDelivery: ""
+    gateway: ""
+    keycloak: ""
+  # Environment variables injected into the container via ConfigMap
+  # Override these per-environment in values-cicd-ocp-*.yaml
+  env:
+    httpPort: "3000"
+    gatewayHost: "localhost"
+    catalogServiceUrl: ""
+    configuratorServiceUrl: "http://localhost:3002"
+    orderServiceUrl: "http://localhost:3003"
+    inventoryServiceUrl: "http://localhost:3004"
+    swaggerPort: "3000"
+    swaggerEnabled: "true"

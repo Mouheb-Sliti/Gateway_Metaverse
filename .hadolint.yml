@@ -7,12 +7,5 @@
 #
 # Authors: See CONTRIBUTORS.txt
 
-# ==================================================
-# Pipeline templates
-# ==================================================
-
-include:
-  - project: 'discobole/discobole-to-be-continuous/frontend'
-    ref: 'main'
-    file: '/templates/gitlab-ci-frontend.yml'
-
+ignored:
+  - DL3018

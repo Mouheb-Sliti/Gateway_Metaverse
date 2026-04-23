@@ -1,22 +1,23 @@
 {
   "name": "metaverse-gateway",
-  "description": "Express API Gateway for Metaverse Platform",
+  "description": "Simple Express proxy gateway for Metaverse API",
   "repository": {},
-  "license": "UNLICENSED",
+  "license": "LICENSED",
   "version": "1.0.0",
   "main": "server.js",
-  "engines": {
-    "node": "18.x",
-    "npm": "9.x"
-    },
   "dependencies": {
-    "axios": "^1.13.5",
-    "dotenv": "^17.3.1",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.0",
-    "http-proxy-middleware": "^3.0.3"
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
+    "http-proxy-middleware": "^3.0.0",
+    "morgan": "^1.10.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "npm install --production"
   }
 }

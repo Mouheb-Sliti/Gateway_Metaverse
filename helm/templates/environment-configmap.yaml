@@ -1,0 +1,16 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    {{- include "gateway.labels" . | nindent 4 }}
+  name: gateway-environment-config
+data:
+  # Gateway application environment variables (injected via envFrom)
+  HTTP_PORT: {{ .Values.gateway.env.httpPort | quote }}
+  GATEWAY_HOST: {{ .Values.gateway.env.gatewayHost | quote }}
+  CATALOG_SERVICE_URL: {{ .Values.gateway.env.catalogServiceUrl | quote }}
+  CONFIGURATOR_SERVICE_URL: {{ .Values.gateway.env.configuratorServiceUrl | quote }}
+  ORDER_SERVICE_URL: {{ .Values.gateway.env.orderServiceUrl | quote }}
+  INVENTORY_SERVICE_URL: {{ .Values.gateway.env.inventoryServiceUrl | quote }}
+  SWAGGER_PORT: {{ .Values.gateway.env.swaggerPort | quote }}
+  SWAGGER_ENABLED: {{ .Values.gateway.env.swaggerEnabled | quote }}
